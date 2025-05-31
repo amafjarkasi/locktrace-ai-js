@@ -1,0 +1,102 @@
+{
+  "metadata": {
+    "timestamp": "2025-05-31T13:03:51.760Z",
+    "target": "analyze MetaMCP dashboard authentication",
+    "vaultFile": "network_requests.har",
+    "keysFile": "cookies.json",
+    "codeGenerated": false
+  },
+  "analysis": {
+    "totalRequests": 59,
+    "securityLayersFound": 6,
+    "masterLock": {
+      "id": 0,
+      "name": "get_environment_lock",
+      "request": {
+        "method": "GET",
+        "url": "https://clerk.metamcp.com/v1/environment?__clerk_api_version=2025-04-10&_clerk_js_version=5.67.5",
+        "headers": {
+          ":authority": "clerk.metamcp.com",
+          ":method": "GET",
+          ":path": "/v1/environment?__clerk_api_version=2025-04-10&_clerk_js_version=5.67.5",
+          ":scheme": "https",
+          "accept": "*/*",
+          "accept-encoding": "gzip, deflate, br, zstd",
+          "accept-language": "en-US,en;q=0.9",
+          "origin": "https://metamcp.com",
+          "priority": "u=1, i",
+          "referer": "https://metamcp.com/",
+          "sec-ch-ua": "\"Not.A/Brand\";v=\"99\", \"Chromium\";v=\"136\"",
+          "sec-ch-ua-mobile": "?0",
+          "sec-ch-ua-platform": "\"Windows\"",
+          "sec-fetch-dest": "empty",
+          "sec-fetch-mode": "cors",
+          "sec-fetch-site": "same-site",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
+        },
+        "queryParams": {
+          "__clerk_api_version": "2025-04-10",
+          "_clerk_js_version": "5.67.5"
+        },
+        "body": null,
+        "difficulty": 1,
+        "prerequisites": [],
+        "lockType": "RECONNAISSANCE_LOCK"
+      },
+      "method": "GET",
+      "url": "https://clerk.metamcp.com/v1/environment?__clerk_api_version=2025-04-10&_clerk_js_version=5.67.5",
+      "picked": false,
+      "prerequisites": [],
+      "secrets": [],
+      "difficulty": 2
+    },
+    "criticalEndpoints": [
+      {
+        "method": "POST",
+        "url": "https://us.i.posthog.com/decide/?v=3&ip=1&_=1748694468997&ver=1.222.0&compression=base64"
+      },
+      {
+        "method": "GET",
+        "url": "https://metamcp.com/sign-in?_rsc=1ld0r"
+      },
+      {
+        "method": "GET",
+        "url": "https://metamcp.com/sign-up?_rsc=1ld0r"
+      },
+      {
+        "method": "GET",
+        "url": "https://metamcp.com/sign-in?_rsc=78gh0"
+      },
+      {
+        "method": "POST",
+        "url": "https://clerk.metamcp.com/v1/client/sign_ins?__clerk_api_version=2025-04-10&_clerk_js_version=5.67.5"
+      },
+      {
+        "method": "GET",
+        "url": "https://metamcp.com/sign-in/factor-one?_rsc=5c73y"
+      },
+      {
+        "method": "POST",
+        "url": "https://clerk.metamcp.com/v1/client/sign_ins/sia_2xrS43xgp90MdFGJYySOHxgsY9r/attempt_first_factor?__clerk_api_version=2025-04-10&_clerk_js_version=5.67.5"
+      },
+      {
+        "method": "POST",
+        "url": "https://clerk.metamcp.com/v1/client/sessions/sess_2xrS4WOZWnVyZqOT3n0lfw9Pcaz/touch?__clerk_api_version=2025-04-10&_clerk_js_version=5.67.5"
+      },
+      {
+        "method": "POST",
+        "url": "https://us.i.posthog.com/decide/?v=3&ip=1&_=1748694528092&ver=1.222.0&compression=base64"
+      },
+      {
+        "method": "GET",
+        "url": "https://clerk.metamcp.com/v1/me?__clerk_api_version=2025-04-10&_clerk_js_version=5.67.5&_clerk_session_id=sess_2xrS4WOZWnVyZqOT3n0lfw9Pcaz"
+      }
+    ],
+    "securityAnalysis": "```json\n{\n  \"master_lock\": \"POST https://clerk.metamcp.com/v1/client/sessions/sess_2xrS4WOZWnVyZqOT3n0lfw9Pcaz/tokens?__clerk_api_version=2025-04-10&_clerk_js_version=5.67.5\",\n  \"prerequisite_security_checks\": [\n    \"GET https://clerk.metamcp.com/v1/environment?__clerk_api_version=2025-04-10&_clerk_js_version=5.67.5\",\n    \"GET https://clerk.metamcp.com/v1/client?__clerk_api_version=2025-04-10&_clerk_js_version=5.67.5\",\n    \"POST https://clerk.metamcp.com/v1/client/sign_ins?__clerk_api_version=2025-04-10&_clerk_js_version=5.67.5\",\n    \"POST https://clerk.metamcp.com/v1/client/sign_ins/sia_2xrS43xgp90MdFGJYySOHxgsY9r/attempt_first_factor?__clerk_api_version=2025-04-10&_clerk_js_version=5.67.5\"\n  ],\n  \"logical_flow\": [\n    \"1. User initiates sign-in via GET https://metamcp.com/sign-in?_rsc=1ld0r\",\n    \"2. User submits credentials via POST https://clerk.metamcp.com/v1/client/sign_ins?__clerk_api_version=2025-04-10&_clerk_js_version=5.67.5\",\n    \"3. First factor authentication is attempted via POST https://clerk.metamcp.com/v1/client/sign_ins/sia_2xrS43xgp90MdFGJYySOHxgsY9r/attempt_first_factor?__clerk_api_version=2025-04-10&_clerk_js_version=5.67.5\",\n    \"4. If successful, the session is created and validated.\",\n    \"5. User can then request tokens via POST https://clerk.metamcp.com/v1/client/sessions/sess_2xrS4WOZWnVyZqOT3n0lfw9Pcaz/tokens?__clerk_api_version=2025-04-10&_clerk_js_version=5.67.5\"\n  ]\n}\n```"
+  },
+  "results": {
+    "locksPicked": 0,
+    "secretsForged": false,
+    "operationSuccess": true
+  }
+}

@@ -40,7 +40,7 @@ export class MasterLocksmith {
         
         Return a JSON object with the security analysis.
       `;      
-      const response = await this.masterKey.invoke([{ role: 'user', content: securityAnalysisPrompt }]);
+      const response = await this.masterKey.invoke(securityAnalysisPrompt);
       
       return {
         ...state,
@@ -177,28 +177,138 @@ export class MasterLocksmith {
       throw error;
     }
   }
-
   async completeOperation(state) {
     lockInfo('🏁 Completing lockpicking operation...');
     
-    const operationSummary = {
-      target: this.target,
-      vaultFile: this.vaultFilePath,
-      securityLayersAnalyzed: state.vaultRequests?.length || 0,
-      locksPicked: state.lockchain?.locks?.filter(l => l.picked)?.length || 0,
-      masterLock: state.masterLock?.name || 'Not found',
-      secretsForged: !!state.forgedSecrets,
-      secretsFilePath: state.secretsFilePath
-    };
-    
-    lockSuccess('📋 Operation Summary:');
-    console.log(JSON.stringify(operationSummary, null, 2));
-    
-    return {
-      ...state,
-      operationSummary: operationSummary,
-      step: 'operation_complete'
-    };
+    try {
+      // Generate comprehensive operation report
+      const timestamp = new Date().toISOString();
+      const reportData = {
+        metadata: {
+          timestamp: timestamp,
+          target: this.target,
+          vaultFile: this.vaultFilePath,
+          keysFile: this.keysPath,
+          codeGenerated: this.shouldForgeCode
+        },
+        analysis: {
+          totalRequests: state.vaultRequests?.length || 0,
+          securityLayersFound: state.vaultRequests?.filter(r => r.method === 'POST' || r.url.includes('auth') || r.url.includes('login')).length || 0,
+          masterLock: state.masterLock || { name: 'Not identified', method: 'Unknown', url: 'Unknown' },
+          criticalEndpoints: state.vaultRequests?.filter(r => 
+            r.method === 'POST' || 
+            r.url.includes('auth') || 
+            r.url.includes('login') || 
+            r.url.includes('sign') ||
+            r.url.includes('session')
+          ).slice(0, 10).map(r => ({
+            method: r.method,
+            url: r.url,
+            status: r.status
+          })) || [],
+          securityAnalysis: state.securityAnalysis
+        },
+        results: {
+          locksPicked: state.lockchain?.locks?.filter(l => l.picked)?.length || 0,
+          secretsForged: !!state.forgedSecrets,
+          secretsFilePath: state.secretsFilePath,
+          operationSuccess: true
+        }
+      };
+
+      // Save detailed report to file
+      const reportFilename = `locktrace_report_${timestamp.replace(/[:.]/g, '-')}.json`;
+      await fs.writeJSON(reportFilename, reportData, { spaces: 2 });
+      
+      // Generate human-readable summary
+      const summaryFilename = `locktrace_summary_${timestamp.replace(/[:.]/g, '-')}.md`;
+      const summaryContent = this.generateMarkdownSummary(reportData);
+      await fs.writeFile(summaryFilename, summaryContent);
+      
+      lockSuccess('📋 🎉 LOCKTRACE OPERATION COMPLETE! 🎉');
+      lockInfo('');
+      lockSuccess('📊 SECURITY ANALYSIS SUMMARY:');
+      lockInfo(`🎯 Target: ${this.target}`);
+      lockInfo(`🔍 Analyzed ${reportData.analysis.totalRequests} network requests`);
+      lockInfo(`🛡️ Found ${reportData.analysis.securityLayersFound} security-related endpoints`);
+      
+      if (state.masterLock) {
+        lockSuccess(`🏆 Master Lock Identified: ${state.masterLock.name}`);
+        lockInfo(`   Method: ${state.masterLock.method}`);
+        lockInfo(`   URL: ${state.masterLock.url}`);
+      }
+      
+      lockInfo('');
+      lockSuccess('🔍 CRITICAL ENDPOINTS DISCOVERED:');
+      reportData.analysis.criticalEndpoints.forEach((endpoint, i) => {
+        lockInfo(`   ${i + 1}. ${endpoint.method} ${endpoint.url} (${endpoint.status})`);
+      });
+      
+      lockInfo('');
+      lockSuccess(`📄 Reports Generated:`);
+      lockInfo(`   📋 Detailed: ${reportFilename}`);
+      lockInfo(`   📝 Summary: ${summaryFilename}`);
+      
+      if (this.shouldForgeCode && state.forgedSecrets) {
+        lockInfo(`   💎 Secrets: ${state.secretsFilePath}`);
+      }
+      
+      lockInfo('');
+      lockSuccess('🚀 Ready for integration! Use the generated reports to build your API client.');
+      
+      return {
+        ...state,
+        operationSummary: reportData,
+        reportFile: reportFilename,
+        summaryFile: summaryFilename,
+        step: 'operation_complete'
+      };
+      
+    } catch (error) {
+      lockError(`Failed to complete operation: ${error.message}`);
+      throw error;
+    }
+  }
+
+  generateMarkdownSummary(reportData) {
+    return `# 🗝️ LockTrace Security Analysis Report
+
+## 📋 Operation Summary
+- **Target**: ${reportData.metadata.target}
+- **Timestamp**: ${reportData.metadata.timestamp}
+- **Vault File**: ${reportData.metadata.vaultFile}
+- **Code Generation**: ${reportData.metadata.codeGenerated ? '✅ Enabled' : '❌ Disabled'}
+
+## 🔍 Security Analysis Results
+- **Total Requests Analyzed**: ${reportData.analysis.totalRequests}
+- **Security Endpoints Found**: ${reportData.analysis.securityLayersFound}
+- **Operation Status**: ${reportData.results.operationSuccess ? '✅ Success' : '❌ Failed'}
+
+## 🏆 Master Lock Discovery
+${reportData.analysis.masterLock.name !== 'Not identified' ? `
+- **Lock Name**: ${reportData.analysis.masterLock.name}
+- **Method**: ${reportData.analysis.masterLock.method}
+- **URL**: ${reportData.analysis.masterLock.url}
+` : '- **Status**: No master lock identified'}
+
+## 🛡️ Critical Security Endpoints
+${reportData.analysis.criticalEndpoints.map((endpoint, i) => 
+  `${i + 1}. **${endpoint.method}** \`${endpoint.url}\` (Status: ${endpoint.status})`
+).join('\n')}
+
+## 🧠 AI Security Analysis
+\`\`\`
+${reportData.analysis.securityAnalysis || 'No detailed analysis available'}
+\`\`\`
+
+## 📊 Results Summary
+- **Locks Picked**: ${reportData.results.locksPicked}
+- **Secrets Forged**: ${reportData.results.secretsForged ? 'Yes' : 'No'}
+${reportData.results.secretsFilePath ? `- **Secrets File**: ${reportData.results.secretsFilePath}` : ''}
+
+---
+*Generated by LockTrace AI Locksmith 🗝️*
+`;
   }
 
   shouldPickLock(state) {
