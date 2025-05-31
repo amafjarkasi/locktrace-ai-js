@@ -111,7 +111,7 @@ export class MasterLocksmith {
         Lock variables available: ${JSON.stringify(state.lockVariables)}
       `;
       
-      const response = await this.masterKey.invoke([{ role: 'user', content: pickingPrompt }]);
+      const response = await this.masterKey.invoke(pickingPrompt);
       
       // Mark lock as picked
       lockToPick.picked = true;
@@ -158,7 +158,7 @@ export class MasterLocksmith {
         Generate a complete, working security integration module.
       `;
       
-      const response = await this.masterKey.invoke([{ role: 'user', content: forgingPrompt }]);
+      const response = await this.masterKey.invoke(forgingPrompt);
       
       // Save forged secrets to file
       const secretsFilePath = './forged-integration-secrets.js';

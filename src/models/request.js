@@ -1,9 +1,8 @@
-export class SecurityLock {
-  constructor(method, url, headers = {}, queryParams = {}, body = null) {
+export class SecurityLock {  constructor(method, url, headers = {}, queryParams = {}, body = null) {
     this.method = method;
     this.url = url;
-    this.headers = headers;
-    this.queryParams = queryParams;
+    this.headers = headers || {};
+    this.queryParams = queryParams || {};
     this.body = body;
     this.difficulty = this.assessLockDifficulty();
     this.prerequisites = [];
@@ -30,9 +29,8 @@ export class SecurityLock {
     if (this.body && typeof this.body === 'object') {
       difficulty += 1;
     }
-    
-    // Multiple query parameters suggest complexity
-    if (Object.keys(this.queryParams).length > 3) {
+      // Multiple query parameters suggest complexity
+    if (this.queryParams && Object.keys(this.queryParams).length > 3) {
       difficulty += 1;
     }
     

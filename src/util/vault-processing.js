@@ -14,19 +14,34 @@ export async function processVaultFile(vaultData) {
     const securityLocks = [];
     const entries = vaultData.log?.entries || [];
     console.log('DEBUG: Found entries:', entries.length);
-    
-    for (const entry of entries) {
+      for (const entry of entries) {
+      // Add null checks for entry and request
+      if (!entry) {
+        console.log('DEBUG: Skipping null entry');
+        continue;
+      }
+      
       const request = entry.request;
-      if (!request) continue;
+      if (!request) {
+        console.log('DEBUG: Skipping entry with null request');
+        continue;
+      }
       
       // Skip certain request types that are not useful for security analysis
       if (shouldSkipRequest(request)) {
         continue;
       }
       
-      const processedLock = await processVaultEntry(entry);
-      if (processedLock) {
-        securityLocks.push(processedLock);
+      try {
+        const processedLock = await processVaultEntry(entry);
+        if (processedLock) {
+          securityLocks.push(processedLock);
+        }
+      } catch (error) {
+        lockError(`Failed to process vault entry: ${error.message}`);
+        console.log('DEBUG: Failed entry:', JSON.stringify(entry, null, 2));
+        // Continue processing other entries instead of failing completely
+        continue;
       }
     }
     
@@ -44,27 +59,43 @@ export async function processVaultFile(vaultData) {
  */
 async function processVaultEntry(entry) {
   try {
+    // Add comprehensive null checks
+    if (!entry) {
+      return null;
+    }
+    
     const request = entry.request;
+    if (!request) {
+      return null;
+    }
+    
     const method = request.method;
     const url = request.url;
     
+    // Skip if essential fields are missing
+    if (!method || !url) {
+      return null;
+    }
+    
     // Extract headers
     const headers = {};
-    if (request.headers) {
+    if (request.headers && Array.isArray(request.headers)) {
       request.headers.forEach(header => {
-        headers[header.name] = header.value;
+        if (header && header.name && header.value) {
+          headers[header.name] = header.value;
+        }
       });
     }
-    
-    // Extract query parameters
+      // Extract query parameters
     const queryParams = {};
-    if (request.queryString && request.queryString.length > 0) {
+    if (request.queryString && Array.isArray(request.queryString)) {
       request.queryString.forEach(param => {
-        queryParams[param.name] = param.value;
+        if (param && param.name && param.value !== undefined) {
+          queryParams[param.name] = param.value;
+        }
       });
     }
-    
-    // Extract body
+      // Extract body
     let body = null;
     if (request.postData && request.postData.text) {
       try {
@@ -79,7 +110,7 @@ async function processVaultEntry(entry) {
       method,
       url,
       headers,
-      Object.keys(queryParams).length > 0 ? queryParams : null,
+      Object.keys(queryParams).length > 0 ? queryParams : {},
       body
     );
   } catch (error) {
@@ -94,48 +125,58 @@ async function processVaultEntry(entry) {
  * @returns {boolean} True if request should be skipped
  */
 function shouldSkipRequest(request) {
-  const url = request.url.toLowerCase();
-  const method = request.method.toUpperCase();
-  
-  // Skip static resources
-  const staticExtensions = [
-    '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.woff', '.woff2',
-    '.ttf', '.eot', '.map', '.webp', '.avif', '.mp4', '.webm', '.ogg'
-  ];
-  
-  if (staticExtensions.some(ext => url.includes(ext))) {
+  // Add null check
+  if (!request || !request.url || !request.method) {
     return true;
   }
   
-  // Skip common tracking and analytics
-  const skipDomains = [
-    'google-analytics.com',
-    'googletagmanager.com',
-    'facebook.com/tr',
-    'doubleclick.net',
-    'googlesyndication.com',
-    'google.com/pagead',
-    'amazon-adsystem.com',
-    'jsdelivr.net',
-    'unpkg.com',
-    'cdnjs.cloudflare.com'
-  ];
-  
-  if (skipDomains.some(domain => url.includes(domain))) {
-    return true;
+  try {
+    const url = request.url.toLowerCase();
+    const method = request.method.toUpperCase();
+    
+    // Skip static resources
+    const staticExtensions = [
+      '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.woff', '.woff2',
+      '.ttf', '.eot', '.map', '.webp', '.avif', '.mp4', '.webm', '.ogg'
+    ];
+    
+    if (staticExtensions.some(ext => url.includes(ext))) {
+      return true;
+    }
+    
+    // Skip common tracking and analytics
+    const skipDomains = [
+      'google-analytics.com',
+      'googletagmanager.com',
+      'facebook.com/tr',
+      'doubleclick.net',
+      'googlesyndication.com',
+      'google.com/pagead',
+      'amazon-adsystem.com',
+      'jsdelivr.net',
+      'unpkg.com',
+      'cdnjs.cloudflare.com'
+    ];
+    
+    if (skipDomains.some(domain => url.includes(domain))) {
+      return true;
+    }
+    
+    // Skip preflight OPTIONS requests
+    if (method === 'OPTIONS') {
+      return true;
+    }
+    
+    // Skip some common polling endpoints
+    if (url.includes('/ping') || url.includes('/health') || url.includes('/heartbeat')) {
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.log('DEBUG: Error in shouldSkipRequest:', error.message);
+    return true; // Skip on error
   }
-  
-  // Skip preflight OPTIONS requests
-  if (method === 'OPTIONS') {
-    return true;
-  }
-  
-  // Skip some common polling endpoints
-  if (url.includes('/ping') || url.includes('/health') || url.includes('/heartbeat')) {
-    return true;
-  }
-  
-  return false;
 }
 
 /**
@@ -310,24 +351,34 @@ export function extractDynamicValues(securityLocks) {
  * @param {Object} dynamicValues - Object to store dynamic values
  */
 function extractDynamicFromObject(obj, dynamicValues) {
-  for (const [key, value] of Object.entries(obj)) {
-    if (typeof value === 'string') {
-      // Look for IDs
-      if (/^(id|_id|objectId)$/i.test(key) && value) {
-        dynamicValues.ids.add(value);
+  // Add comprehensive null/undefined checks
+  if (!obj || typeof obj !== 'object') {
+    return;
+  }
+  
+  try {
+    for (const [key, value] of Object.entries(obj)) {
+      if (typeof value === 'string') {
+        // Look for IDs
+        if (/^(id|_id|objectId)$/i.test(key) && value) {
+          dynamicValues.ids.add(value);
+        }
+        
+        // Look for timestamps
+        if (/timestamp|time|created|updated/i.test(key) && value) {
+          dynamicValues.timestamps.add(value);
+        }
+        
+        // Look for user IDs
+        if (/user|uid/i.test(key) && value) {
+          dynamicValues.userIds.add(value);
+        }
+      } else if (typeof value === 'object' && value !== null) {
+        extractDynamicFromObject(value, dynamicValues);
       }
-      
-      // Look for timestamps
-      if (/timestamp|time|created|updated/i.test(key) && value) {
-        dynamicValues.timestamps.add(value);
-      }
-      
-      // Look for user IDs
-      if (/user|uid/i.test(key) && value) {
-        dynamicValues.userIds.add(value);
-      }
-    } else if (typeof value === 'object' && value !== null) {
-      extractDynamicFromObject(value, dynamicValues);
     }
+  } catch (error) {
+    console.log('DEBUG: Error in extractDynamicFromObject:', error.message);
+    // Skip this object if there's an error
   }
 }
