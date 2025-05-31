@@ -59,3 +59,11 @@ temp/
 # Build outputs
 dist/
 build/
+
+# Report and backup files (prevent accumulation)
+locktrace_report_*.json
+locktrace_summary_*.md
+*-old.*
+*-new.*
+*-backup.*
+*-copy.*

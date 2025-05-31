@@ -1,6 +1,6 @@
 import { forgeLockchain } from './lockchain-forger.js';
 import { MasterKey } from './util/master-key.js';
-import { lockTrace, lockSuccess, lockError, lockInfo } from './util/lock-console.js';
+import { lockTrace, lockSuccess, lockError, lockInfo, lockInspect, displayOperationSummary, displayLockchain, displaySecurityLocks } from './util/lock-console.js';
 import fs from 'fs-extra';
 
 let masterLocksmith = null;
@@ -44,36 +44,52 @@ export async function unlockSecrets(
     };
 
     lockInfo(`🎯 Beginning lockpicking operation: "${target}"`);
-    lockInfo(`🗄️ Using vault: ${vaultPath}`);
-    lockInfo(`🗝️ Using master keys: ${keysPath}`);
+    lockInfo(`🗄️ Using vault: ${vaultPath}`);    lockInfo(`🗝️ Using master keys: ${keysPath}`);
     lockInfo(`🔢 Maximum picks: ${maxPicks}`);
     lockInfo(`⚒️ Forge code: ${shouldForgeCode}`);
 
-    console.log('DEBUG: Initial state:', initialState);
-    console.log('DEBUG: Config:', config);
-    console.log('DEBUG: About to start lockchain stream...');
+    lockTrace('🎯 Initializing lockpicking operation...');
+    lockTrace(`📁 Using state: ${Object.keys(initialState).join(', ')}`);
+    lockTrace('🚀 Starting lockchain stream...');
     
-    const eventStream = lockchain.stream(initialState, config);    console.log('DEBUG: Starting event stream processing...');
+    const eventStream = lockchain.stream(initialState, config);
+    lockTrace('✨ Event stream processing started...');
     let finalState = null;
     
     for await (const event of eventStream) {
-      console.log('DEBUG: Received event:', event);
+      // Use smart object inspection instead of raw logging
+      lockTrace('🔄 Processing lockchain event...');
+      
       const eventKeys = Object.keys(event || {});
-      console.log('DEBUG: Event keys:', eventKeys);
       if (eventKeys.length > 0) {
-        lockTrace(`🔄 Processing lock event: ${eventKeys.join(', ')}`);
+        lockTrace(`🔄 Event type: ${eventKeys.join(', ')}`);
         
-        // Log state changes for debugging
+        // Display event contents with beautiful formatting
         for (const [key, value] of Object.entries(event)) {
-          if (value && typeof value === 'object' && value.masterLock) {
-            lockInfo(`🏆 Master lock identified: ${value.masterLock?.name || 'Unknown'}`);
-          }
-          if (value && typeof value === 'object' && value.currentPick) {
-            lockInfo(`🔓 Picking lock: ${value.currentPick?.name || 'Unknown'}`);
-          }
-          
-          // Capture the final state for reporting
           if (value && typeof value === 'object') {
+            // Special handling for different types of data
+            if (value.vaultRequests) {
+              displaySecurityLocks(value.vaultRequests, 'Vault Requests', 5);
+            }
+            if (value.pendingLocks) {
+              displaySecurityLocks(value.pendingLocks, 'Pending Locks', 5);
+            }
+            if (value.lockchain) {
+              displayLockchain(value.lockchain);
+            }
+            if (value.operationSummary) {
+              displayOperationSummary(value.operationSummary);
+            }
+            
+            // Standard info logging for key events
+            if (value.masterLock) {
+              lockInfo(`🏆 Master lock identified: ${value.masterLock?.name || 'Unknown'}`);
+            }
+            if (value.currentPick) {
+              lockInfo(`🔓 Picking lock: ${value.currentPick?.name || 'Unknown'}`);
+            }
+            
+            // Capture the final state for reporting
             finalState = value;
           }
         }
