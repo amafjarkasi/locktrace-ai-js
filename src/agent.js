@@ -13,13 +13,16 @@ export class MasterLocksmith {
     this.masterKey = MasterKey.getInstance();
     this.lockchainManager = new LockchainManager();
   }
-
   async analyzeVault(state) {
     lockInfo('🔍 Analyzing digital vault...');
     
     try {
+      console.log('DEBUG: Reading vault file:', this.vaultFilePath);
       const vaultData = await fs.readJSON(this.vaultFilePath);
+      console.log('DEBUG: Vault data loaded, keys:', Object.keys(vaultData));
+      
       const lockRequests = await processVaultFile(vaultData);
+      console.log('DEBUG: Lock requests processed:', lockRequests.length);
       
       lockInfo(`📊 Found ${lockRequests.length} security layers in vault`);
       

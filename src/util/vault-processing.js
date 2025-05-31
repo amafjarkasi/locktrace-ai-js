@@ -7,10 +7,13 @@ import { lockInfo, lockError } from './lock-console.js';
  * @returns {Array} Array of SecurityLock objects
  */
 export async function processVaultFile(vaultData) {
-  lockInfo('�️ Analyzing security vault...');
+  lockInfo('🗂️ Analyzing security vault...');
     try {
+    console.log('DEBUG: Vault data structure:', typeof vaultData, vaultData ? Object.keys(vaultData) : 'null/undefined');
+    
     const securityLocks = [];
     const entries = vaultData.log?.entries || [];
+    console.log('DEBUG: Found entries:', entries.length);
     
     for (const entry of entries) {
       const request = entry.request;

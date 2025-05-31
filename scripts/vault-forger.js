@@ -2,6 +2,8 @@ import { chromium } from 'playwright';
 import fs from 'fs-extra';
 import { lockInfo, lockSuccess, lockError, lockWarning } from '../src/util/lock-console.js';
 
+console.log('VAULT FORGER: Script loaded successfully!');
+
 /**
  * Open browser and wait for user to complete security reconnaissance, then save vault and keys
  */
@@ -10,13 +12,17 @@ export async function openBrowserAndWait() {
   let context;
     try {
     lockInfo('🌐 Launching security reconnaissance browser...');
+    console.log('DEBUG: About to launch chromium browser...');
     
     browser = await chromium.launch({ 
       headless: false,
-      devtools: true // Open DevTools for user to analyze security layers
+      devtools: true, // Open DevTools for user to analyze security layers
+      slowMo: 1000 // Add delay to see what's happening
     });
+      console.log('DEBUG: Browser launched successfully!');
     
-    lockInfo('�️ Setting up digital vault recording...');
+    lockInfo('🗄️ Setting up digital vault recording...');
+    console.log('DEBUG: Creating browser context...');
     
     context = await browser.newContext({
       recordHar: {
@@ -25,10 +31,13 @@ export async function openBrowserAndWait() {
       }
     });
 
+    console.log('DEBUG: Context created, opening new page...');
     const page = await context.newPage();
+    console.log('DEBUG: Page created, navigating to about:blank...');
     
     // Navigate to a blank page initially
     await page.goto('about:blank');
+    console.log('DEBUG: Navigation complete!');
     
     lockSuccess('✅ Security reconnaissance browser is ready!');
     lockInfo('');
@@ -209,10 +218,10 @@ export async function forgeVaultWithOptions(options = {}) {
   }
 }
 
-// If run directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-  openBrowserAndWait().catch(error => {
-    lockError(`Vault forging error: ${error.message}`);
-    process.exit(1);
-  });
-}
+// Always run the function for testing
+console.log('VAULT FORGER: Starting execution...');
+openBrowserAndWait().catch(error => {
+  lockError(`Vault forging error: ${error.message}`);
+  console.error('DEBUG: Full error:', error);
+  process.exit(1);
+});

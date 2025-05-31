@@ -18,11 +18,9 @@ export async function unlockSecrets(
     // Validate vault exists
     if (!await fs.pathExists(vaultPath)) {
       throw new Error(`Digital vault not found: ${vaultPath}. Please run 'locktrace forge-vault' first.`);
-    }
-
-    lockInfo(`🔑 Initializing Master Key with model: ${keyModel}`);
+    }    lockInfo(`🔑 Initializing Master Key with model: ${keyModel}`);
+    MasterKey.setDefaultModel(keyModel);
     const masterKey = MasterKey.getInstance();
-    masterKey.setDefaultModel(keyModel);
 
     lockInfo(`🏗️ Forging lockchain architecture...`);
     const { lockchain, locksmithInstance } = await forgeLockchain(target, vaultPath, keysPath, shouldForgeCode);
